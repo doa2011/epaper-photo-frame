@@ -1,0 +1,35 @@
+name: Docker smoke test
+on:
+  push:
+  pull_request:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare read-only photo fixture
+        run: |
+          mkdir -p "${RUNNER_TEMP}/photos"
+          chmod 755 "${RUNNER_TEMP}/photos"
+          printf 'PHOTO_DIRECTORY=%s\nPHOTO_API_TOKEN=ci-smoke-token\n' "${RUNNER_TEMP}/photos" > .env
+      - name: Validate Compose and build
+        run: |
+          docker compose config --quiet
+          docker compose build
+      - name: Start and wait for health
+        run: docker compose up -d --wait --wait-timeout 90
+      - name: Verify API and container restrictions
+        run: |
+          curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' http://127.0.0.1:8080/api/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/photos)" = 401
+          curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' http://127.0.0.1:8080/api/photos | python -c 'import json,sys; assert json.load(sys.stdin)["total"] == 0'
+          test "$(docker compose exec -T photo-frame id -u)" = 10001
+          docker inspect "$(docker compose ps -q photo-frame)" | python -c 'import json,sys; c=json.load(sys.stdin)[0]; assert c["HostConfig"]["ReadonlyRootfs"]; assert any(m["Destination"]=="/photos" and not m["RW"] for m in c["Mounts"])'
+          docker compose exec -T photo-frame python -c 'import errno; from pathlib import Path; exec("try:\n Path(\x27/photos/probe\x27).write_text(\x27test\x27)\nexcept OSError as e:\n assert e.errno == errno.EROFS\nelse:\n raise AssertionError(\x27writable photo mount\x27)")'
+      - name: Container logs
+        if: always()
+        run: docker compose logs --no-color
+      - name: Cleanup
+        if: always()
+        run: docker compose down --volumes
