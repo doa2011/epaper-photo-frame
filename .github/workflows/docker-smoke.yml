@@ -12,6 +12,8 @@ jobs:
         run: |
           mkdir -p "${RUNNER_TEMP}/photos"
           chmod 755 "${RUNNER_TEMP}/photos"
+          python -c 'import struct,zlib,sys; p=sys.argv[1]; chunk=lambda t,d:struct.pack(">I",len(d))+t+d+struct.pack(">I",zlib.crc32(t+d)&0xffffffff); open(p,"wb").write(b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">IIBBBBB",2,2,8,2,0,0,0))+chunk(b"IDAT",zlib.compress(bytes([0,255,0,0,255,255,255,0,0,0,0,255,255,0])))+chunk(b"IEND",b""))' "${RUNNER_TEMP}/photos/fixture.png"
+          chmod 644 "${RUNNER_TEMP}/photos/fixture.png"
           printf 'PHOTO_DIRECTORY=%s\nPHOTO_API_TOKEN=ci-smoke-token\n' "${RUNNER_TEMP}/photos" > .env
       - name: Validate Compose and build
         run: |
@@ -23,10 +25,15 @@ jobs:
         run: |
           curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' http://127.0.0.1:8080/api/health
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/photos)" = 401
-          curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' http://127.0.0.1:8080/api/photos | python -c 'import json,sys; assert json.load(sys.stdin)["total"] == 0'
+          curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' http://127.0.0.1:8080/api/photos | python -c 'import json,sys; assert json.load(sys.stdin)["total"] == 1'
           test "$(docker compose exec -T photo-frame id -u)" = 10001
           docker inspect "$(docker compose ps -q photo-frame)" | python -c 'import json,sys; c=json.load(sys.stdin)[0]; assert c["HostConfig"]["ReadonlyRootfs"]; assert any(m["Destination"]=="/photos" and not m["RW"] for m in c["Mounts"])'
           docker compose exec -T photo-frame python -c 'import errno; from pathlib import Path; exec("try:\n Path(\x27/photos/probe\x27).write_text(\x27test\x27)\nexcept OSError as e:\n assert e.errno == errno.EROFS\nelse:\n raise AssertionError(\x27writable photo mount\x27)")'
+      - name: Verify real photo conversion
+        run: |
+          curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' 'http://127.0.0.1:8080/api/image?photo=fixture.png&device=blozi-1280x800' -o "${RUNNER_TEMP}/color.png"
+          curl --fail --silent -H 'Authorization: Bearer ci-smoke-token' 'http://127.0.0.1:8080/api/preview?photo=fixture.png&device=gdey097f91&method=none' -o "${RUNNER_TEMP}/epaper.png"
+          python -c 'import struct,sys; from pathlib import Path; [(lambda b,w,h: (b[:8]==b"\x89PNG\r\n\x1a\n" and struct.unpack(">II",b[16:24])==(w,h)) or sys.exit("invalid PNG dimensions"))(Path(p).read_bytes(),w,h) for p,w,h in [(sys.argv[1],1280,800),(sys.argv[2],960,672)]]' "${RUNNER_TEMP}/color.png" "${RUNNER_TEMP}/epaper.png"
       - name: Container logs
         if: always()
         run: docker compose logs --no-color
