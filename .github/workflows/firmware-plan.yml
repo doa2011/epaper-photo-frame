@@ -12,6 +12,7 @@ on:
           - polaroid-ble
           - polaroid-hybrid
           - polaroid-passive
+          - polaroid-tn2115s2
         default: frame-usb
       config_json:
         description: Optional custom JSON configuration; overrides preset
@@ -29,6 +30,8 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -p test_firmware_config.py -v
+      - name: Validate first passive NFC candidate
+        run: python firmware_config.py --preset polaroid-tn2115s2 --output tn2115s2-plan.json
       - name: Generate configuration manifest
         env:
           PRESET: ${{ inputs.preset || 'frame-usb' }}
@@ -40,10 +43,11 @@ jobs:
           else
             python firmware_config.py --preset "$PRESET" --output manifest.json
           fi
-          sha256sum manifest.json > SHA256SUMS
+          sha256sum manifest.json tn2115s2-plan.json > SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: configuration-plan-${{ github.sha }}
           path: |
             manifest.json
             SHA256SUMS
+            tn2115s2-plan.json

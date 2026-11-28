@@ -54,3 +54,14 @@ class FirmwareConfigTests(unittest.TestCase):
     def test_unknown_fields(self):
         with self.assertRaisesRegex(ValueError, "exactly"):
             plan(dict(PRESETS["frame-usb"], typo=True))
+
+    def test_tn2115s2_candidate(self):
+        config = PRESETS["polaroid-tn2115s2"]
+        result = plan(config)
+        self.assertEqual(result["display"]["four_color_frame_bytes"], 96000)
+        self.assertEqual(result["display"]["driver_candidate"], "SSD2677")
+        self.assertFalse(result["buildable"])
+        self.assertTrue(any("SDK" in x for x in result["blockers"]))
+        for override in (dict(power="usb"), dict(transports=["ble"]), dict(features=["timer"])):
+            with self.assertRaises(ValueError):
+                plan(dict(config, **override))

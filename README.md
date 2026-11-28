@@ -13,6 +13,8 @@
 - 新增配置规划器、12 个测试方法和参数化配置 CI。新提交的 CI 结果以 [Actions](https://github.com/doa2011/epaper-photo-frame/actions) 为准。
 - 尚无可刷写固件、实机认证、手机 App 或正式 HA 集成。配置产物是 JSON，不是固件。
 
+上一轮 6538193 的 [Python CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46127946524) 两个版本各 40 项通过，[配置 CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46127946451) 12 项通过，[Docker CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46127946478) 通过（已查 jobs 日志）。本轮新增首个无源候选配置及回归测试，结果待 Actions。
+
 ## 配置组合（候选，非硬件支持承诺）
 
 | 模式预设 | 主控候选 | 屏幕候选 | 通信 | 供电 |
@@ -20,6 +22,7 @@
 | frame-usb | ESP32-S3 | GDEY116F51 | Wi-Fi + BLE | USB |
 | polaroid-ble | nRF52840 | 通用 400×300 | BLE | 电池 |
 | polaroid-hybrid | nRF52840 | 通用 400×300 | NFC 唤醒 + BLE | 电池 |
+| polaroid-tn2115s2 | TN2115S2 | GDEM0397F81 800×480 | NFC | 无源 |
 | polaroid-passive | 专用无源 NFC 设备 | 通用 200×200 | NFC | 无源 |
 
 候选主控能力表见 firmware_config.py。TLSR8258/8359、EFR32BG22/MG21/MG22、CH592、DA14531、ESP32/C3/C6、nRF52832 等仅为规划选项；未验证具体板卡、引脚、存储、工具链及通信协议。内置 NFC Tag 不等于无源屏幕供电。OpenEPaperLink 和免刷原厂价签将作为独立协议适配层，未实现。所有屏幕候选见 device_profiles.py；小屏通用规格不代表实际驱动。四色容量只是按行对齐的理论值。
@@ -31,6 +34,7 @@ Python 3.11/3.12，项目目录执行：
 ```sh
 python -m pip install -r requirements.txt
 python firmware_config.py --preset frame-usb
+python firmware_config.py --preset polaroid-tn2115s2 --output nfc-plan.json
 python firmware_config.py --preset polaroid-hybrid --output manifest.json
 python -m unittest discover -s tests -v
 ```
@@ -54,6 +58,8 @@ Actions 的 Firmware configuration plan 工作流在工作流进入默认分支�
 [DSM7 Docker 部署及验收](docs/DSM7.md)。HA 服务、BLE/NFC 手机写入、设备队列和轮播仍待开发。
 
 ## 硬件证据
+
+[首个无源 NFC 目标与验证清单](docs/NFC.md)：TN2115S2 + GDEM0397F81，仅配置候选，尚无可刷固件。
 
 用户报告 TLSR8359、JD79665，照片提示 GD25Q16E（2 MiB）。实际 FPC、GPIO、Flash 布局、色数未验证。SSD2677 的 960×672、960×640、960×680 候选屏幕需分别核实初始化、BUSY、映射、扫描方向和供电。参考 [ATC_TLSR_Paper](https://github.com/atc1441/ATC_TLSR_Paper)、[GxEPD2](https://github.com/ZinggJM/GxEPD2)、[hass-ble-esl](https://github.com/eigger/hass-ble-esl)。复用前检查许可。没有实机测试。
 

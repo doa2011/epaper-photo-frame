@@ -4,6 +4,7 @@ from device_profiles import PANELS
 class DeviceProfilesTests(unittest.TestCase):
     def test_registry(self):
         expected = {
+            "gdem0397f81": ("SSD2677", 800, 480, 96000),
             "jd79665-800x480": ("JD79665", 800, 480, 96000),
             "gdey097f91": ("SSD2677", 960, 672, 161280),
             "waveshare-10.2-g": ("SSD2677", 960, 640, 153600),

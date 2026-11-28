@@ -22,6 +22,7 @@ class PanelCandidate:
 
 SSD_REFERENCE = "https://files.waveshare.com/wiki/common/SSD2677_1.0.pdf"
 PANELS = {
+    "gdem0397f81": PanelCandidate("SSD2677", 800, 480, "https://www.good-display.com/product/577.html"),
     "jd79665-800x480": PanelCandidate("JD79665", 800, 480, ""),
     "gdey097f91": PanelCandidate("SSD2677", 960, 672, SSD_REFERENCE),
     "waveshare-10.2-g": PanelCandidate("SSD2677", 960, 640, SSD_REFERENCE),

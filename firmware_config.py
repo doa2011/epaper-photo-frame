@@ -20,6 +20,7 @@ CHIPS = {
     "ch592": {"ble"},
     "da14531": {"ble"},
     "passive-nfc": {"nfc"},
+    "tn2115s2": {"nfc"},
 }
 # Generic geometry only; no driver assignment for these portable candidates.
 PORTABLE = {"generic-154": (200, 200), "generic-290": (296, 128),
@@ -51,7 +52,7 @@ def plan(config):
         raise ValueError("transport unsupported by selected chip")
     if "nfc_wake" in transports and "ble" not in transports:
         raise ValueError("NFC wake requires BLE image transport")
-    if (chip == "passive-nfc") != (power == "passive_nfc"):
+    if (chip in {"passive-nfc", "tn2115s2"}) != (power == "passive_nfc"):
         raise ValueError("passive NFC requires a dedicated passive device profile")
     if power == "passive_nfc" and (mode != "polaroid" or transports != {"nfc"} or features):
         raise ValueError("passive NFC planning supports only tap-to-write without active modules")
@@ -80,10 +81,13 @@ def plan(config):
                     "four_color_frame_bytes": ((width * 2 + 7) // 8) * height},
         "blockers": ["board pinout and resources unverified",
                      "panel encoding and electrical compatibility unverified",
-                     "firmware target and toolchain not implemented"],
+                     "firmware target and toolchain not implemented"] + (
+                         ["TN2115S2 NFC SDK and harvested power unverified"] if chip == "tn2115s2" else []),
     }
 
 PRESETS = {
+    "polaroid-tn2115s2": dict(chip="tn2115s2", panel="gdem0397f81", mode="polaroid",
+                              power="passive_nfc", transports=["nfc"], features=[]),
     "frame-usb": dict(chip="esp32-s3", panel="gdey116f51", mode="slideshow", power="usb",
                       transports=["wifi", "ble"], features=["http", "ha", "timer"]),
     "polaroid-ble": dict(chip="nrf52840", panel="generic-420", mode="polaroid", power="battery",
