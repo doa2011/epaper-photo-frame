@@ -54,13 +54,18 @@ LTC4041 ↔ 2 × 2.7V supercapacitors (series)
 - 5V Qi 发射控制器、功率级、匹配网络和发射线圈。
 - 底座电池、USB 输入、Qi 发射状态测试点。
 
-电源路径：
-USB-C 5V → BQ25895 SYS/PMID → Qi TX
-1S 21700 → BQ25895 OTG 5V → Qi TX
+电源路径（建议用 TPS2121 做 USB/电池升压源自动切换）：
+- USB-C 5V → TPS2121 IN1（USB 优先）；
+- USB-C 5V → BQ25895 VBUS，负责给 1S 电池充电；
+- 1S 电池 ↔ BQ25895 BAT；BQ25895 在无 VBUS 时启用 OTG，PMID 输出 5V；
+- BQ25895 PMID（仅在 OTG/电池供电时作为 5V 源）→ TPS2121 IN2；
+- TPS2121 OUT → 5V_TX → Qi 发射级。
 
-BQ25895 支持单节锂电池充电、电源路径管理及最高约 3.1A 的升压输出能力，足以作为 5W Qi 发射级的 5V 电源候选。OTG 模式仍需要通过其 OTG 控制/寄存器正确启用；不能只靠把电池接上就假设 USB 拔出后自动完成所有状态配置。底座控制器应读取 TUSB320 的 Type-C 电流模式，并配置 BQ25895 输入限流/充电电流。
+USB 插入时 TPS2121 选择 IN1，Qi TX 由 USB 直接供电，BQ25895 同时按输入功率预算给电池充电；USB 拔出后，BQ25895 在 OTG 已配置的条件下从电池产生 5V，TPS2121 切到 IN2。不要把 BQ25895 的 PMID 当作充电模式下可任意带载的系统输出；用 TPS2121 隔离未选中的电源路径，并按 TI 参考电路连接 PMID 去耦。
 
-**Qi 发射级首版建议：**优先使用经过验证的 5W Qi BPP A11 发射模块或按 Microchip 5W 参考设计实现。Microchip 参考方案为 5V USB-C 输入、5W BPP、含 FOD 和谐振回路保护；其参考控制器为 PIC16F18326。可研究让该控制器同时配置 BQ25895；若参考固件/引脚资源不允许，则增加独立小型电源管理 MCU。不要在第一版自行猜测谐振电容、线圈参数或 FOD 阈值。
+BQ25895 支持单节锂电池充电、电源路径管理及最高约 3.1A 的 5V 升压/OTG 输出。其 OTG_CONFIG、OTG 引脚和输入检测状态必须按数据手册配置。TUSB320 读取 USB-C 电源宣告的电流能力，底座控制 MCU 再按“Qi 发射输入电流 + 电池充电电流 + 转换损耗”设置 BQ25895 的输入/充电限流；5V/3A 适配器是首版目标，若只检测到 1.5A 或默认电流，应降低充电电流，必要时暂停充电。
+
+**Qi 发射级首版建议：**优先使用经过验证的 5W Qi BPP A11 发射模块，或按 Microchip 5W 参考设计实现。Microchip 公开资料确认该方案为 5V USB-C 输入、5W BPP、标称 70%+ 传输效率，并有基于功率效率的 FOD；设计文件需登录并接受其参考设计许可，不能把下载的设计文件直接当作开源资料分发。首版可先用成熟 TX 模块验证整机电源，再决定是否将 TX 功率级整合到 PCB-C。底座另设 STM32C011F6P6TR 小控制器，管理 TUSB320/BQ25895、检测 USB 状态和电池电量；TX 模块内部控制器独立运行。
 
 ## 3. 主要器件候选
 
@@ -78,7 +83,7 @@ BQ25895 支持单节锂电池充电、电源路径管理及最高约 3.1A 的升
 | PCB-B | 2 × 2.7V 10F 或 20F 低 ESR 超级电容 | 脱座短时储能 | 外购件；先测 ESR/漏电/体积，不按普通 JLC SMT 件处理 |
 | PCB-B | 5W Qi RX 线圈 + 铁氧体片 | 无线接收 | 与 BQ51013B 匹配；不建议使用未知参数裸线圈 |
 | PCB-C | BQ25895RTWR | 1S 锂电池充电、电源路径、5V OTG 升压 | **C80200** |
-| PCB-C | TUSB320IRWBR | USB-C CC 检测、方向/电流能力识别 | **C80170** |
+| PCB-C | TUSB320IRWBR | USB-C CC 检测、方向/电流能力识别 | **C80170** |\n| PCB-C | TPS2121RUXR | USB 5V / BQ25895 OTG 5V 双路电源 MUX，自动切换、反向电流阻断 | **C485916** |\n| PCB-C | STM32C011F6P6TR | 底座电源管理 MCU：读取 TUSB320、配置 BQ25895、管理 OTG/电池状态 | **C7021404** |
 | PCB-C | PIC16F18326（或独立小 MCU） | Qi TX 控制，并可承担 BQ25895 I²C 配置 | Microchip 参考设计采用 PIC16F18326；需核对参考固件授权及剩余 GPIO/I²C 资源 |
 | PCB-C | 1S 21700 + NTC/保护 | 底座电池 | 电芯/保护包外购，按电芯规格设置充电电流 |
 | PCB-C | 5W Qi TX 线圈、谐振电容、功率 MOS/驱动 | Qi 发射功率级 | 首版优先成熟模块或 Microchip A11 参考设计，不在缺少线圈参数时锁定料号 |
@@ -174,7 +179,7 @@ PFO/POWER_FAIL 和 Qi 接收状态建议接到 nRF GPIO；可选霍尔输入提�
 - [TI BQ51013B 数据手册](https://www.ti.com/lit/ds/symlink/bq51013b.pdf)
 - [ADI LTC4041 数据手册](https://www.analog.com/media/en/technical-documentation/data-sheets/ltc4041.pdf)
 - [TI BQ25895 数据手册](https://www.ti.com/lit/ds/symlink/bq25895.pdf)
-- [TI TUSB320 产品资料](https://www.ti.com/product/TUSB320)
+- [TI TUSB320 产品资料](https://www.ti.com/product/TUSB320)\n- [LCSC TPS2121RUXR C485916](https://www.lcsc.com/product-detail/C485916.html)\n- [LCSC STM32C011F6P6TR C7021404](https://www.lcsc.com/product-detail/C7021404.html)
 - [Microchip 5W Qi A11 发射参考设计](https://www.microchip.com/en-us/tools-resources/reference-designs/qi-5w-wireless-transmitter-charger)
 - [LCSC BQ51013BRHLR C55663](https://www.lcsc.com/product-detail/C55663.html)
 - [LCSC LTC4041EUFD C3151895](https://www.lcsc.com/product-detail/C3151895.html)
