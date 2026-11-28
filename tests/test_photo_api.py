@@ -111,4 +111,5 @@ class PhotoAPITests(unittest.TestCase):
         self.assertEqual(headers["Content-Type"], "image/png")
         with Image.open(BytesIO(body)) as image:
             self.assertEqual(image.size, (devices[device]["width"], devices[device]["height"]))
-            self.assertEqual(image.convert("RGB").getpixel((0, 0)), (255, 0, 0))
+            # The four-color preview uses the pigment palette, not source RGB.
+            self.assertEqual(image.convert("RGB").getpixel((0, 0)), (220, 0, 0))
