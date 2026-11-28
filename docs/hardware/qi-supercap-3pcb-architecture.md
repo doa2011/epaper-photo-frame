@@ -83,7 +83,9 @@ BQ25895 支持单节锂电池充电、电源路径管理及最高约 3.1A 的 5V
 | PCB-B | 2 × 2.7V 10F 或 20F 低 ESR 超级电容 | 脱座短时储能 | 外购件；先测 ESR/漏电/体积，不按普通 JLC SMT 件处理 |
 | PCB-B | 5W Qi RX 线圈 + 铁氧体片 | 无线接收 | 与 BQ51013B 匹配；不建议使用未知参数裸线圈 |
 | PCB-C | BQ25895RTWR | 1S 锂电池充电、电源路径、5V OTG 升压 | **C80200** |
-| PCB-C | TUSB320IRWBR | USB-C CC 检测、方向/电流能力识别 | **C80170** |\n| PCB-C | TPS2121RUXR | USB 5V / BQ25895 OTG 5V 双路电源 MUX，自动切换、反向电流阻断 | **C485916** |\n| PCB-C | STM32C011F6P6TR | 底座电源管理 MCU：读取 TUSB320、配置 BQ25895、管理 OTG/电池状态 | **C7021404** |
+| PCB-C | TUSB320IRWBR | USB-C CC 检测、方向/电流能力识别 | **C80170** |
+| PCB-C | TPS2121RUXR | USB 5V / BQ25895 OTG 5V 双路电源 MUX，自动切换、反向电流阻断 | **C485916** |
+| PCB-C | STM32C011F6P6TR | 底座电源管理 MCU：读取 TUSB320、配置 BQ25895、管理 OTG/电池状态 | **C7021404** |
 | PCB-C | 5W Qi TX A11 模块/控制器 | Qi 发射状态机、功率级、FOD | 首版优先成熟模块；Microchip 参考设计文件须接受其许可，不作为开源 BOM/源码分发 |
 | PCB-C | 1S 21700 + NTC/保护 | 底座电池 | 电芯/保护包外购，按电芯规格设置充电电流 |
 | PCB-C | 5W Qi TX 线圈、谐振电容、功率 MOS/驱动 | Qi 发射功率级 | 首版优先成熟模块或 Microchip A11 参考设计，不在缺少线圈参数时锁定料号 |
@@ -179,7 +181,9 @@ PFO/POWER_FAIL 和 Qi 接收状态建议接到 nRF GPIO；可选霍尔输入提�
 - [TI BQ51013B 数据手册](https://www.ti.com/lit/ds/symlink/bq51013b.pdf)
 - [ADI LTC4041 数据手册](https://www.analog.com/media/en/technical-documentation/data-sheets/ltc4041.pdf)
 - [TI BQ25895 数据手册](https://www.ti.com/lit/ds/symlink/bq25895.pdf)
-- [TI TUSB320 产品资料](https://www.ti.com/product/TUSB320)\n- [LCSC TPS2121RUXR C485916](https://www.lcsc.com/product-detail/C485916.html)\n- [LCSC STM32C011F6P6TR C7021404](https://www.lcsc.com/product-detail/C7021404.html)
+- [TI TUSB320 产品资料](https://www.ti.com/product/TUSB320)
+- [LCSC TPS2121RUXR C485916](https://www.lcsc.com/product-detail/C485916.html)
+- [LCSC STM32C011F6P6TR C7021404](https://www.lcsc.com/product-detail/C7021404.html)
 - [Microchip 5W Qi A11 发射参考设计](https://www.microchip.com/en-us/tools-resources/reference-designs/qi-5w-wireless-transmitter-charger)
 - [LCSC BQ51013BRHLR C55663](https://www.lcsc.com/product-detail/C55663.html)
 - [LCSC LTC4041EUFD C3151895](https://www.lcsc.com/product-detail/C3151895.html)
