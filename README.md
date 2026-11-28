@@ -15,6 +15,12 @@
 
 上一轮 6538193 的 [Python CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46127946524) 两个版本各 40 项通过，[配置 CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46127946451) 12 项通过，[Docker CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46127946478) 通过（已查 jobs 日志）。本轮新增首个无源候选配置及回归测试，结果待 Actions。
 
+## nRF52840 首选便携固件路线
+
+用户确认 nRF52840 为首选，先从 PCA10056 DK + GDEM0397F81 (SSD2677) 开始。新增真实屏幕诊断编译 CI，包含 GDEM0397F81、GDEY116F51 (SSD2677) 和 GDEM0213B74 (SSD1680)，基于 GxEPD2 1.6.7，结果待 Actions。诊断不含 BLE/NFC、无源取电或完整图像传输；不发布未核对许可证与刷写布局的二进制。详细构建命令、引脚、限制见 [nRF52840 编译验证](docs/NRF52840.md)。正式统一通信固件继续评估 Nordic NCS/Zephyr；保留 ST25DV、TN2115S2、TN2115H 等备用路线，及 NAS/HA 原有功能。
+
+基准 780dd72 已重新核实：配置 13 项、Python 3.11/3.12 各 41 项通过、Docker smoke 通过（[配置 CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46135803419)、[Python CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46135803404)、[Docker CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46135803412)）。
+
 ## 配置组合（候选，非硬件支持承诺）
 
 | 模式预设 | 主控候选 | 屏幕候选 | 通信 | 供电 |
