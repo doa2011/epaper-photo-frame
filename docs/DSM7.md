@@ -21,6 +21,6 @@ curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/devices
 curl -fsS -G -H "Authorization: Bearer $TOKEN" --data-urlencode "photo=example.jpg" --data-urlencode "device=blozi-1280x800" http://127.0.0.1:8080/api/preview -o preview.png
 ```
 将 example.jpg 替换为列表中实际相对路径。预期输出 PNG 1280×800；也可选择实际 /api/devices 返回的四色候选型号进行预览。预览不是硬件显示确认。
-远程访问优先 SSH 端口转发或配置 HTTPS 反向代理；默认不向 LAN 暴露。不要将明文 HTTP 或 token 暴露至公网。当前无浏览器 WebUI。
+远程访问优先 SSH 端口转发或配置 HTTPS 反向代理；默认不向 LAN 暴露。不要将明文 HTTP 或 token 暴露至公网。已有基础浏览器 WebUI（实验版），可通过已配置的访问地址打开；仍需真实浏览器与 DSM7 实机验收。
 异常检查：docker compose logs --tail=100；检查目录存在、权限、端口冲突、token 配置。日志分享前删除敏感信息。停止：docker compose down；不会删除绑定的照片目录。
 验收：健康检查通过、未认证请求 401、照片列表非空、预览尺寸正确、照片挂载只读。Docker CI 已覆盖基础容器运行及合成样本转换，DSM7 实机验收仍待执行。
