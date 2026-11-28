@@ -87,3 +87,28 @@ class PhotoAPITests(unittest.TestCase):
         self.assertEqual(self.get("/api/image", photo="a.png", device="blozi-1280x800", palette="bwr")[0], 400)
         self.assertEqual(self.get("/api/preview", photo="a.png", device="blozi-1280x800", method="invalid")[0], 400)
         self.assertEqual(self.get("/unknown")[0], 404)
+
+    def test_web_ui_entrypoint(self):
+        status, headers, body = self.get("/", token=None)
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "text/html; charset=utf-8")
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        html = body.decode("utf-8")
+        for control in ("token", "load", "photo", "prev", "next", "device", "palette", "method", "render", "preview"):
+            self.assertIn('id="' + control + '"', html)
+        for endpoint in ("/api/photos", "/api/devices", "/api/preview"):
+            self.assertIn(endpoint, html)
+        self.assertNotIn("test-token", html)
+        self.assertEqual(self.get("/api/preview", token=None)[0], 401)
+
+    def test_web_ui_preview_contract(self):
+        status, _, body = self.get("/api/devices")
+        self.assertEqual(status, 200)
+        devices = json.loads(body)
+        device = next(k for k in devices if k != "blozi-1280x800")
+        status, headers, body = self.get("/api/preview", photo="a.png", device=device, palette="bwry", method="none")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/png")
+        with Image.open(BytesIO(body)) as image:
+            self.assertEqual(image.size, (devices[device]["width"], devices[device]["height"]))
+            self.assertEqual(image.convert("RGB").getpixel((0, 0)), (255, 0, 0))
