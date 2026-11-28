@@ -1,0 +1,61 @@
+name: nRF52840 panel compile
+on:
+  push:
+    paths:
+      - 'firmware/nrf52840/**'
+      - '.github/workflows/nrf52840-panels.yml'
+  pull_request:
+    paths:
+      - 'firmware/nrf52840/**'
+      - '.github/workflows/nrf52840-panels.yml'
+  workflow_dispatch:
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - panel: gdem0397f81
+            id: 1
+          - panel: gdey116f51
+            id: 2
+          - panel: gdem0213b74
+            id: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: '1.2.2'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Nordic DFU packaging tool
+        run: |
+          python -m pip install adafruit-nrfutil==0.5.3.post16
+          command -v adafruit-nrfutil
+          adafruit-nrfutil --help
+      - name: Install pinned board and panel libraries
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
+          arduino-cli core update-index
+          arduino-cli core install adafruit:nrf52@1.7.0
+          arduino-cli lib install --no-deps "Adafruit BusIO@1.16.2" "Adafruit GFX Library@1.11.11" "GxEPD2@1.6.7"
+      - name: Compile panel diagnostic
+        env:
+          PANEL_ID: ${{ matrix.id }}
+          PANEL_NAME: ${{ matrix.panel }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence build
+          arduino-cli compile --fqbn adafruit:nrf52:pca10056 --build-path "$PWD/build" --build-property "compiler.cpp.extra_flags=-DEPD_PANEL=$PANEL_ID" firmware/nrf52840/panel_diag 2>&1 | tee evidence/compile.log
+          test -n "$(find build -maxdepth 1 -name '*.elf' -print -quit)"
+          find build -maxdepth 1 -type f \( -name '*.elf' -o -name '*.hex' -o -name '*.bin' -o -name '*.map' \) -print0 | sort -z | xargs -0 sha256sum > evidence/SHA256SUMS
+          printf 'board=adafruit:nrf52:pca10056\npanel=%s\ncommit=%s\ncore=1.7.0\nGxEPD2=1.6.7\nstatus=compile_only\n' "$PANEL_NAME" "$GITHUB_SHA" > evidence/build-manifest.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nrf52840-${{ matrix.panel }}-${{ github.sha }}-compile-evidence
+          path: evidence/
+          if-no-files-found: warn

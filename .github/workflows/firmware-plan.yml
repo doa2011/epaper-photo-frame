@@ -1,0 +1,53 @@
+name: Firmware configuration plan
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: Candidate configuration preset (no firmware binary)
+        type: choice
+        options:
+          - frame-usb
+          - polaroid-ble
+          - polaroid-hybrid
+          - polaroid-passive
+          - polaroid-tn2115s2
+        default: frame-usb
+      config_json:
+        description: Optional custom JSON configuration; overrides preset
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -p test_firmware_config.py -v
+      - name: Validate first passive NFC candidate
+        run: python firmware_config.py --preset polaroid-tn2115s2 --output tn2115s2-plan.json
+      - name: Generate configuration manifest
+        env:
+          PRESET: ${{ inputs.preset || 'frame-usb' }}
+          CONFIG_JSON: ${{ inputs.config_json }}
+        run: |
+          if [ -n "$CONFIG_JSON" ]; then
+            printf '%s' "$CONFIG_JSON" > custom.json
+            python firmware_config.py --config custom.json --output manifest.json
+          else
+            python firmware_config.py --preset "$PRESET" --output manifest.json
+          fi
+          sha256sum manifest.json tn2115s2-plan.json > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: configuration-plan-${{ github.sha }}
+          path: |
+            manifest.json
+            SHA256SUMS
+            tn2115s2-plan.json
