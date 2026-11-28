@@ -1,8 +1,64 @@
 # E-Paper Photo Frame
 
-Local photo service for Synology DSM7 and Home Assistant. Photos stay on LAN. Architecture: read-only photo source -> EXIF/crop/dither -> device-specific encoder -> queued transport -> acknowledgement. Never equate submission with physical display.
+面向 Synology DSM7 NAS Docker 与 Home Assistant 的局域网电子相册平台。照片默认留在本地网络。软件链路：只读照片源 → EXIF/裁切/抖动 → 屏幕型号编码 → 传输队列 → 设备确认。**提交成功不等于屏幕已实际显示**。
 
-## Hardware evidence
-User reports TLSR8359 and JD79665; board photo suggests GD25Q16E (2 MiB). Exact panel FPC, GPIO, flash layout and color count remain unverified. Reference projects: https://github.com/atc1441/ATC_TLSR_Paper and https://github.com/ZinggJM/GxEPD2 ; original BLE option https://github.com/eigger/hass-ble-esl . Verify licenses before reuse. No hardware tests yet.
+## 目标模式
 
-Development occurs on feature branches; no automatic merges.
+- **Dock / NAS-HA 轮播**：底座或固定电源供电，NAS/HA 管理照片、顺序/随机轮播和设备状态。
+- **Portable / 拍立得**：手机本地拍照、裁切、加白边/日期/文字，经 BLE 离线传输；墨水屏刷新后休眠。
+- **NFC 唤醒 + BLE 传图**：nRF52840 NFC-A Tag 场唤醒，BLE 承担照片数据传输。NFC 标签唤醒不等于 NFC 无源供电，也不等于 NFC 可直接传完整照片。
+- **无源 NFC 直写**：独立研究，必须按具体 NFC/屏幕协议和能量预算验证，不与 NFC-A Tag 唤醒混为一谈。
+
+## 硬件证据与候选
+
+| 主控/板卡 | 屏幕/驱动 | 当前状态 | 备注 |
+|---|---|---|---|
+| nRF52840（优先） | GDEM0397F81 800×480 / SSD2677 / 四色 | 候选设计 | 已整理三 PCB Qi+超级电容电源方案；尚未打板/实机验证 |
+| TLSR8359 | JD79665 + GD25Q16E（板照推测） | 用户提供型号/待核实 | FPC、GPIO、Flash 布局、颜色映射待实证 |
+| ESP32 系列 | 多型号 SPI EPD | 候选平台 | 后续按 panel profile 接入 |
+| EFR32 / CH592 / DA14531 等 | 待匹配 | 研究候选 | 不视为已支持主控 |
+
+### nRF52840 首选路线
+
+采用 Raytac MDBT50Q-1MV2 或同等级 nRF52840 模组作为首选主控候选。该模组具备 BLE、NFC-A Tag（可场唤醒）、SPI/I²C、USB 等外设；开发阶段建议用 nRF52840 DK 的板载 J-Link，量产 PCB 必须保留 SWDIO、SWDCLK、RESET、GND、VTref。
+
+### GDEM0397F81 + SSD2677
+
+- 目标面板：3.97 英寸、800×480、黑白/白/红/黄四色，24-pin、0.5mm FPC。
+- SSD2677 应按显示模组 COG/COF 驱动方案处理：JLC PCB 负责主控、FPC 和外部功率支持电路，不把 SSD2677 裸晶当作普通 QFN 器件直接贴装。
+- 用户提供的排线定义已整理到硬件设计文档；连接器接触面、Pin-1、VPP/VDDD 等供电细节仍须与该型号完整规格书及实物复核。
+- SSD2677 数据手册有特定 E Ink FPL 使用限制，打样/采购前需向屏幕供应商确认该面板的授权和兼容范围。
+
+### Qi 底座 + 超级电容便携终端（已确认方向）
+
+- 底座：USB-C 5V/3A + 1S 21700 电池 + 5W Qi 发射。
+- 终端：5W Qi 接收 + LTC4041 + 2×2.7V 超级电容，不装锂电池。
+- 自动模式：入座轮播；脱座停止轮播，保留当前画面，并在超级电容能量允许时完成短时 BLE 收图/刷新。
+- 超级电容只定义为短时便携/刷新缓冲，不承诺数小时续航；需要长时间便携时再扩展锂电池终端版本。
+
+三块 PCB 的电源框图、候选芯片、LCSC 料号、FPC 映射、超级电容估算、状态机和制板前检查清单见：
+- [三 PCB Qi + 超级电容电源架构](docs/hardware/qi-supercap-3pcb-architecture.md)
+
+## 软件架构
+
+- 照片源：只读本地目录；后续适配 Synology Photos。
+- 图像处理：EXIF 方向、裁切、黑白红/黑白黄/四色调色板、抖动和设备尺寸编码。
+- 设备后端：BLE 直连、HA BLE、OpenEPaperLink AP、ESP32 HTTP/MQTT 等按模块组合。
+- 可靠性：分块传输、长度/CRC、完成确认、原子提交、超时/重试；断连保留旧画面。
+- 状态区分：已生成、已发送、设备已确认、实机显示已验证。
+
+## 开发状态
+
+- 仓库初始化：已提交。
+- 本地图像转换原型：PR #1 开放中，未自动合并；最近 Docker smoke test 已通过。
+- GDEM0397F81 / SSD2677：仅完成资料整理和候选接口分析，未编译面板固件、未驱动实物。
+- Qi + 超级电容：完成候选器件与三 PCB 架构文档，尚未完成原理图、PCB、热/功率测试。
+- NAS Docker、HA 集成及实机验证：按后续阶段推进。
+
+## 开发原则
+
+- 每种主控使用其适合的合法工具链；不强制统一 SDK。
+- board/profile、panel、transport、power、app_mode、features 声明式组合；无效组合在编译前拒绝。
+- 预设组合和自定义组合并行；只编译所选功能。
+- 独立 feature 分支和 PR；不擅自合并。
+- 只报告真实编译、CI、协议和实机证据；硬件候选不标成已支持。
