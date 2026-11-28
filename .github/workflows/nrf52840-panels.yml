@@ -27,6 +27,14 @@ jobs:
       - uses: arduino/setup-arduino-cli@v2
         with:
           version: '1.2.2'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Nordic DFU packaging tool
+        run: |
+          python -m pip install adafruit-nrfutil==0.5.3.post16
+          command -v adafruit-nrfutil
+          adafruit-nrfutil --help
       - name: Install pinned board and panel libraries
         run: |
           arduino-cli config init

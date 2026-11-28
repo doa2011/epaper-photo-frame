@@ -70,3 +70,6 @@ Actions 的 Firmware configuration plan 工作流在工作流进入默认分支�
 用户报告 TLSR8359、JD79665，照片提示 GD25Q16E（2 MiB）。实际 FPC、GPIO、Flash 布局、色数未验证。SSD2677 的 960×672、960×640、960×680 候选屏幕需分别核实初始化、BUSY、映射、扫描方向和供电。参考 [ATC_TLSR_Paper](https://github.com/atc1441/ATC_TLSR_Paper)、[GxEPD2](https://github.com/ZinggJM/GxEPD2)、[hass-ble-esl](https://github.com/eigger/hass-ble-esl)。复用前检查许可。没有实机测试。
 
 研发仅在 feature 分支进行，不自动合并。[PR #1](https://github.com/doa2011/epaper-photo-frame/pull/1)。
+
+
+2026-11-28：首轮 nRF52840 矩阵在 DFU 打包阶段缺少 `adafruit-nrfutil`，见 [CI](https://github.com/doa2011/epaper-photo-frame/actions/runs/46142082395)。修复固定 Python 3.11 与 adafruit-nrfutil 0.5.3.post16，待 CI 验证；尚无实机结果。
