@@ -11,6 +11,8 @@ from photo_catalog import PhotoCatalog
 from device_profiles import PANELS
 from image_pipeline import PALETTES
 
+WEB_UI = "<!doctype html>\n<html lang=\"zh-CN\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>电子相册</title><style>body{font:16px system-ui;max-width:900px;margin:2rem auto;padding:0 1rem}label{display:block;margin:.7rem 0}select,input,button{font:inherit;max-width:100%;padding:.4rem}img{max-width:100%;height:auto}#status{white-space:pre-wrap}</style>\n<h1>电子相册 · 本地预览</h1><label>API Token <input id=\"token\" type=\"password\" autocomplete=\"off\"></label><button id=\"load\">读取照片和设备</button>\n<label>照片 <select id=\"photo\"></select></label><button id=\"prev\">上一页</button> <button id=\"next\">下一页</button>\n<label>设备 <select id=\"device\"></select></label><label>颜色 <select id=\"palette\"><option value=\"\">设备默认</option><option>rgb</option><option>bw</option><option>bwr</option><option>bwy</option><option>bwry</option></select></label>\n<label>抖动 <select id=\"method\"><option>floyd</option><option>bayer</option><option>atkinson</option><option>none</option></select></label><button id=\"render\">生成预览</button><p id=\"status\" role=\"status\"></p><img id=\"preview\" alt=\"照片预览\">\n<script>\nconst el=id=>document.getElementById(id); let offset=0,total=0,oldUrl=null,busy=false;\nasync function api(path,params={}){const r=await fetch(path+'?'+new URLSearchParams(params),{headers:{Authorization:'Bearer '+el('token').value},cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r}\nfunction options(id,values){el(id).replaceChildren(...values.map(([v,t])=>new Option(t,v)))}\nasync function page(){const data=await (await api('/api/photos',{offset,limit:100})).json();total=data.total;options('photo',data.photos.map(x=>[x,x]));el('status').textContent='照片 '+total+' 张；当前偏移 '+offset}\nasync function run(fn){if(busy)return;busy=true;try{await fn()}catch(e){el('status').textContent=e.message}finally{busy=false}}\nel('load').onclick=()=>run(async()=>{offset=0;const d=await (await api('/api/devices')).json();options('device',Object.entries(d).map(([k,v])=>[k,k+' '+v.width+'×'+v.height]));await page()});\nel('prev').onclick=()=>run(async()=>{offset=Math.max(0,offset-100);await page()});\nel('next').onclick=()=>run(async()=>{if(offset+100<total){offset+=100;await page()}});\nel('render').onclick=()=>run(async()=>{el('status').textContent='正在转换…';const p={photo:el('photo').value,device:el('device').value,method:el('method').value};if(el('palette').value)p.palette=el('palette').value;const b=await (await api('/api/preview',p)).blob();const u=URL.createObjectURL(b);const image=new Image();image.src=u;try{await image.decode()}catch(e){URL.revokeObjectURL(u);throw e}el('preview').src=u;if(oldUrl)URL.revokeObjectURL(oldUrl);oldUrl=u;el('status').textContent='预览完成（非实机显示）'});\n</script></html>"
+
 def make_handler(catalog, token):
     if not token:
         raise ValueError("API token required")
@@ -30,6 +32,8 @@ def make_handler(catalog, token):
             pass
 
         def do_GET(self):
+            if self.path == "/":
+                return self.send_data(200, WEB_UI.encode("utf-8"), "text/html; charset=utf-8")
             supplied = self.headers.get("Authorization", "")
             if not hmac.compare_digest(supplied.encode(), ("Bearer " + token).encode()):
                 return self.send_data(401, {"error": "unauthorized"})
